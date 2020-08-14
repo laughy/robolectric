@@ -216,6 +216,16 @@ public class ShadowMediaCodec {
     checkState(!isAsync, "Attempting to deque buffer in Async mode.");
     try {
       Integer index;
+
+      // Prevents the input buffer gets dequeued before its correcponding output buffer is read.
+      // ShadowMediaCodec couples its input and output buffers based on index. That is, data queued
+      // in the buffer of index i will always be output in output buffer at idxex i. Consequently,
+      // if output buffer i is not read (not dequeued from the outputBufferAvailableIndexes), input
+      // buffer i cannot be dequeued again.
+      if (outputBufferAvailableIndexes.contains(inputBufferAvailableIndexes.peek())) {
+        return MediaCodec.INFO_TRY_AGAIN_LATER;
+      }
+
       if (timeoutUs < 0) {
         index = inputBufferAvailableIndexes.take();
       } else {
@@ -301,16 +311,21 @@ public class ShadowMediaCodec {
     if (index < 0 || index >= outputBuffers.length) {
       throw new IndexOutOfBoundsException("Cannot make non-existent output buffer available.");
     }
-    ((Buffer) outputBuffers[index]).clear();
+    Buffer inputBuffer = inputBuffers[index];
+    Buffer outputBuffer = outputBuffers[index];
+    BufferInfo outputBufferInfo = outputBufferInfos[index];
 
-    ((Buffer) inputBuffers[index]).position(info.offset).limit(info.offset + info.size);
+    // clears the output buffer, as it's already fully consumed
+    outputBuffer.clear();
+
+    inputBuffer.position(info.offset).limit(info.offset + info.size);
     fakeCodec.process(inputBuffers[index], outputBuffers[index]);
 
-    outputBufferInfos[index].flags = info.flags;
-    outputBufferInfos[index].size = outputBuffers[index].position();
-    outputBufferInfos[index].offset = info.offset;
-    outputBufferInfos[index].presentationTimeUs = info.presentationTimeUs;
-    ((Buffer) outputBuffers[index]).position(0).limit(outputBufferInfos[index].size);
+    outputBufferInfo.flags = info.flags;
+    outputBufferInfo.size = outputBuffer.position();
+    outputBufferInfo.offset = info.offset;
+    outputBufferInfo.presentationTimeUs = info.presentationTimeUs;
+    outputBuffer.flip();
 
     outputBufferAvailableIndexes.add(index);
 
@@ -318,6 +333,7 @@ public class ShadowMediaCodec {
       // Signal output buffer availability.
       postFakeNativeEvent(EVENT_CALLBACK, CB_OUTPUT_AVAILABLE, index, outputBufferInfos[index]);
     }
+
     makeInputBufferAvailable(index);
   }
 
