@@ -38,6 +38,8 @@ import org.robolectric.shadows.ShadowMediaCodec.CodecConfig;
 @RunWith(AndroidJUnit4.class)
 @Config(minSdk = LOLLIPOP)
 public final class ShadowMediaCodecTest {
+  // 10 buffers in the current ShadowMediaCodec implementation
+  private static final int BUFFER_COUNT = 10;
   private static final String AUDIO_MIME = "audio/fake";
   private static final int WITHOUT_TIMEOUT = -1;
 
@@ -68,6 +70,19 @@ public final class ShadowMediaCodecTest {
       fail();
     } catch (IllegalStateException expected) {
     }
+  }
+
+  @Test
+  public void dequeueInputBuffer_withoutReleasingOutput() throws IOException {
+    MediaCodec codec = createSyncEncoder();
+
+    for (int i = 0; i < BUFFER_COUNT; i++) {
+      codec.dequeueInputBuffer(/* timeoutUs= */ 0);
+    }
+
+    int bufferIndex = codec.dequeueInputBuffer(/* timeoutUs= */ 0);
+
+    assertThat(bufferIndex).isEqualTo(MediaCodec.INFO_TRY_AGAIN_LATER);
   }
 
   @Test
