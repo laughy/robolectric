@@ -28,11 +28,11 @@ import org.robolectric.annotation.Resetter;
 public class ShadowAudioTrack {
 
   /**
-   * Listeners to be notified when data is written to an {@link AudioTrack} via
-   * {@link AudioTrack#write(ByteBuffer, int, int)}
+   * Listeners to be notified when data is written to an {@link AudioTrack} via {@link
+   * AudioTrack#write(ByteBuffer, int, int)}
    *
-   * <p>Currently, only the data written through
-   * AudioTrack.write(ByteBuffer audioData, int sizeInBytes, int writeMode) will be reported.</p>
+   * <p>Currently, only the data written through AudioTrack.write(ByteBuffer audioData, int
+   * sizeInBytes, int writeMode) will be reported.
    */
   public interface OnAudioDataWrittenListener {
 
